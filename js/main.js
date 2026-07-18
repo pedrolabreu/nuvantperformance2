@@ -40,4 +40,82 @@
       contactForm.reset();
     });
   }
+
+  initDraggableMarquee();
+
+  function initDraggableMarquee() {
+    const marquee = document.querySelector('.marquee');
+    const track = document.querySelector('.marquee-track');
+    if (!marquee || !track) return;
+
+    const SPEED = 40; // px por segundo do auto-scroll
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    let sequenceWidth = 0;
+    let position = 0;
+    let isDragging = false;
+    let dragStartX = 0;
+    let dragStartPosition = 0;
+    let lastTimestamp = null;
+
+    function measure() {
+      sequenceWidth = track.scrollWidth / 2;
+    }
+
+    function wrap(pos) {
+      if (!sequenceWidth) return pos;
+      let p = pos % sequenceWidth;
+      if (p > 0) p -= sequenceWidth;
+      return p;
+    }
+
+    function applyTransform() {
+      track.style.transform = `translateX(${position}px)`;
+    }
+
+    function frame(timestamp) {
+      if (!isDragging) {
+        if (lastTimestamp !== null && !reduceMotion) {
+          const dt = (timestamp - lastTimestamp) / 1000;
+          position = wrap(position - SPEED * dt);
+          applyTransform();
+        }
+        lastTimestamp = timestamp;
+      } else {
+        lastTimestamp = null;
+      }
+      requestAnimationFrame(frame);
+    }
+
+    function onPointerDown(event) {
+      isDragging = true;
+      marquee.classList.add('dragging');
+      dragStartX = event.clientX;
+      dragStartPosition = position;
+      marquee.setPointerCapture(event.pointerId);
+    }
+
+    function onPointerMove(event) {
+      if (!isDragging) return;
+      position = wrap(dragStartPosition + (event.clientX - dragStartX));
+      applyTransform();
+    }
+
+    function endDrag() {
+      isDragging = false;
+      marquee.classList.remove('dragging');
+    }
+
+    marquee.addEventListener('pointerdown', onPointerDown);
+    marquee.addEventListener('pointermove', onPointerMove);
+    marquee.addEventListener('pointerup', endDrag);
+    marquee.addEventListener('pointercancel', endDrag);
+    marquee.addEventListener('pointerleave', endDrag);
+    marquee.addEventListener('dragstart', (event) => event.preventDefault());
+
+    window.addEventListener('resize', measure);
+
+    measure();
+    requestAnimationFrame(frame);
+  }
 })();
